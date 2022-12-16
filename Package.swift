@@ -5,9 +5,10 @@ import PackageDescription
 
 let package = Package(
     name: "day_sixteen",
+    platforms: [.macOS(.v13)],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
-        .library(
+        .executable(
             name: "day_sixteen",
             targets: ["day_sixteen"]),
     ],
@@ -21,8 +22,8 @@ let package = Package(
         .target(
             name: "day_sixteen",
             dependencies: []),
-        .testTarget(
-            name: "day_sixteenTests",
-            dependencies: ["day_sixteen"]),
+//        .testTarget(
+//            name: "day_sixteenTests",
+//            dependencies: ["day_sixteen"]),
     ]
 )
