@@ -156,8 +156,10 @@ func calculateBenefit(for valve: Valve, from fromValve: Valve, currentTime: Int,
 
 var openableValves = valves.compactMap { $0.flowRate > 0 ? $0 : nil }
 
-func getMaxPressure(currentTime: Int, currentValve: Valve, openedValves: [Valve: Bool]) -> Int {
-    var maxPressure = 0
+let MAX_TIME = 26
+var calculations = Array<Dictionary<Dictionary<Valve, Bool>,Int>>(repeating: Dictionary<Dictionary<Valve, Bool>, Int>(), count: MAX_TIME)
+
+func getMaxPressure(currentTime: Int, currentValve: Valve, openedValves: [Valve: Bool]) {
 
     for nextValve in openableValves {
         // skip if opened
@@ -167,19 +169,31 @@ func getMaxPressure(currentTime: Int, currentValve: Valve, openedValves: [Valve:
 
         // check if we can open within time
         let newTime = currentTime + distances[currentValve]![nextValve]! //+ 1
-        if newTime >= 30 {
+        if newTime >= MAX_TIME {
+            // going to be same pressure at end, so let's record
+            if calculations[MAX_TIME - 1].index(forKey: openedValves) == nil {
+                calculations[MAX_TIME - 1][openedValves] = 0
+            }
+            let currentPressure = calculations[currentTime][openedValves]!
+            calculations[MAX_TIME - 1][openedValves] = max(calculations[MAX_TIME - 1][openedValves]!, currentPressure)
+
             continue
         }
 
-        let nextPressure = (30 - newTime) * nextValve.flowRate
+        let nextPressure = (MAX_TIME - newTime) * nextValve.flowRate
 
         var nextOpenedValves = openedValves
         nextOpenedValves[nextValve] = true
 
-        maxPressure = max(maxPressure, nextPressure + getMaxPressure(currentTime: newTime, currentValve: nextValve, openedValves: nextOpenedValves))
-    }
+        if calculations[newTime].index(forKey: nextOpenedValves) == nil {
+            calculations[newTime][nextOpenedValves] = 0
+        }
+        let nextTotalPressure = nextPressure + calculations[currentTime][openedValves]!
+        calculations[newTime][nextOpenedValves] = max(calculations[newTime][nextOpenedValves]!, nextTotalPressure)
 
-    return maxPressure
+        getMaxPressure(currentTime: newTime, currentValve: nextValve, openedValves: nextOpenedValves)
+//        maxPressure = max(maxPressure, nextPressure + getMaxPressure(currentTime: newTime, currentValve: nextValve, openedValves: nextOpenedValves))
+    }
 }
 
 var openedValves: [Valve: Bool] = {
@@ -206,7 +220,45 @@ for fromValve in openableValves + [startValve!] {
     }
 }
 
-print(getMaxPressure(currentTime: 0, currentValve: startValve!, openedValves: openedValves))
+calculations[0][openedValves] = 0
+
+getMaxPressure(currentTime: 0, currentValve: startValve!, openedValves: openedValves)
+
+
+func doNotIntersect(lhs: [Valve: Bool], rhs: [Valve: Bool]) -> Bool {
+    if lhs.count != rhs.count {
+        fatalError()
+    }
+
+    for elem in lhs {
+        if rhs[elem.key]! && elem.value {
+            return false
+        }
+    }
+
+    return true
+}
+
+let subCalcs = calculations[MAX_TIME - 1].sorted(by: { $0.value > $1.value })//.prefix(100)
+
+var maxBlah = 0
+var i = 0
+var total = subCalcs.count
+for calc in subCalcs {
+    print((Double(i) / Double(total))*100.0)
+    i += 1
+    let opened = calc.key
+    for otherCalc in subCalcs {
+        if calc == otherCalc {
+            continue
+        }
+
+        if doNotIntersect(lhs: calc.key, rhs: otherCalc.key) {
+            maxBlah = max(maxBlah, calc.value + otherCalc.value)
+        }
+    }
+}
+print(maxBlah)
 
 //var currentValve = startValve!
 //var currentTime = 30
